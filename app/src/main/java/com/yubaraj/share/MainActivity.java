@@ -194,7 +194,7 @@ public class MainActivity extends Activity {
                 js("nativeStatus", "Uploading " + name + " to temporary online relay…");
                 try (OutputStream out = conn.getOutputStream(); InputStream in = getContentResolver().openInputStream(uri)) {
                     if (in == null) throw new IOException("Cannot read selected file");
-                    out.write(("--"+boundary+"\\r\\nContent-Disposition: form-data; name=\\"file\\"; filename=\\""+name.replace("\\"","_")+"\\"\\r\\nContent-Type: application/octet-stream\\r\\n\\r\\n").getBytes(StandardCharsets.UTF_8));
+                    out.write(("--" + boundary + "\r\nContent-Disposition: form-data; name=\"file\"; filename=\"" + name.replace("\"", "_") + "\"\r\nContent-Type: application/octet-stream\r\n\r\n").getBytes(StandardCharsets.UTF_8));
                     byte[] buf = new byte[65536]; int n;
                     while ((n=in.read(buf))!=-1) out.write(buf,0,n);
                     out.write(("\\r\\n--"+boundary+"--\\r\\n").getBytes(StandardCharsets.UTF_8));
@@ -232,7 +232,7 @@ public class MainActivity extends Activity {
                     int q=enc.indexOf("''"); if(q>=0)enc=enc.substring(q+2);
                     try{name=URLDecoder.decode(enc,"UTF-8");}catch(Exception ignored){}
                 }
-                name=name.replaceAll("[\\\\/:*?\\"<>|]","_");
+                name = name.replaceAll("[\\\\/:*?\"<>|]", "_");
                 ContentValues values=new ContentValues();
                 values.put(MediaStore.Downloads.DISPLAY_NAME,name);
                 values.put(MediaStore.Downloads.MIME_TYPE,"application/octet-stream");
