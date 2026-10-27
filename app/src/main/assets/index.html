@@ -12,7 +12,7 @@ header{padding:24px 18px 30px;background:linear-gradient(140deg,#00b9ef,#0757e8 
 <div class="card"><div class="icon">📶</div><h3>Offline Transfer</h3><p>Local Wi-Fi or hotspot; internet not required.</p><button onclick="offline()">How to connect</button></div>
 <div class="card"><div class="icon">🌐</div><h3>Online Transfer</h3><p>Remote transfer service is not configured in this build.</p><button onclick="online()">Online status</button></div>
 </div>
-<div class="section"><h2>Send to receiver</h2><p style="font-size:13px;color:#66738b">On the receiving phone, tap Start Receiver. Enter the IP address shown there below. Both phones must be on the same Wi-Fi/hotspot.</p><input id="receiverIp" placeholder="Receiver IP, e.g. 192.168.1.12" inputmode="decimal"><button class="secondary" onclick="send()">Select files and send</button></div>
+<div class="section"><h2>Send to receiver</h2><p style="font-size:13px;color:#66738b">On the receiving phone, tap Start Receiver. This phone will find it automatically. Both phones must be connected to the same Wi-Fi/hotspot.</p><button class="secondary" onclick="send()">Find receiver &amp; select files</button></div>
 <div class="section"><h2>Online transfer by code</h2>
 <p style="font-size:13px;color:#66738b">Requires your online relay server deployed with HTTPS. Sender uploads one file temporarily and shares the six-digit code. Receiver downloads using that code.</p>
 <input id="serverUrl" placeholder="Relay HTTPS URL, e.g. https://your-server.example.com" inputmode="url">
@@ -28,9 +28,9 @@ header{padding:24px 18px 30px;background:linear-gradient(140deg,#00b9ef,#0757e8 
 function status(t){document.getElementById('status').textContent=t}
 function nativeStatus(t){status(t)}
 function nativeHistory(t){document.getElementById('history').textContent=t}
-function send(){let ip=document.getElementById('receiverIp').value.trim();if(!ip){status('Enter the receiver phone IP address first.');return}if(window.AndroidBridge)AndroidBridge.sendTo(ip);else status('Install and open the Android APK to send files.')}
+function send(){if(window.AndroidBridge)AndroidBridge.sendAuto();else status('Install and open the Android APK to send files.')}
 function receive(){if(window.AndroidBridge)AndroidBridge.startReceiver();else status('Open the Android APK to start receiving.')}
-function offline(){status('1) Connect both phones to the same Wi-Fi, or connect the sender to the receiver phone hotspot. 2) On receiver tap Start Receiver. 3) Enter the IP shown on receiver on sender phone, then choose files and send. Keep receiver app open.')}
+function offline(){status('1) Connect both phones to the same Wi-Fi, or connect the sender to the receiver phone hotspot. 2) On receiver tap Start Receiver. 3) On sender tap Find receiver & select files; receiver is found automatically. Keep receiver app open.')}
 function online(){document.getElementById('serverUrl').focus();status('Online transfer needs the relay server URL. Deploy the online-server folder, use its HTTPS URL, then upload a file to get a code.')}
 function onlineSend(){let url=document.getElementById('serverUrl').value.trim();if(!url){status('Enter your deployed relay server HTTPS URL first.');return}if(window.AndroidBridge)AndroidBridge.onlineSend(url);else status('Install the Android APK to upload a file.')}
 function onlineReceive(){let url=document.getElementById('serverUrl').value.trim(),code=document.getElementById('transferCode').value.trim();if(!url||!/^\\d{6}$/.test(code)){status('Enter the relay URL and a six-digit code.');return}if(window.AndroidBridge)AndroidBridge.onlineReceive(url,code);else status('Install the Android APK to download a file.')}
