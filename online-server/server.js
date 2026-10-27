@@ -14,6 +14,14 @@ const TTL_MS = Number(process.env.FILE_TTL_MINUTES || 60) * 60 * 1000;
 fs.mkdirSync(STORE, { recursive: true });
 
 app.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' } }));
+// Allow the Chromebook/browser client and hosted web page to call the relay API.
+app.use((req, res, next) => {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET,POST,OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  if (req.method === 'OPTIONS') return res.sendStatus(204);
+  next();
+});
 app.use(express.json({ limit: '20kb' }));
 app.use(rateLimit({ windowMs: 60 * 1000, limit: 60, standardHeaders: true, legacyHeaders: false }));
 
