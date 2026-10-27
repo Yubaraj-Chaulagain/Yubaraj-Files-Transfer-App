@@ -87,7 +87,8 @@ public class MainActivity extends Activity {
                 serverSocket = new ServerSocket();
                 serverSocket.setReuseAddress(true);
                 serverSocket.bind(new InetSocketAddress(8988));
-                js("nativeStatus", "RECEIVE READY — connect both phones to the same Wi-Fi/hotspot. This phone IP: " + localIp() + " — Port: 8988");
+                js("nativeStatus", "RECEIVE READY — receiver is discoverable automatically. Keep both phones on the same Wi-Fi/hotspot.");
+                startDiscoveryResponder();
                 while (!serverSocket.isClosed()) {
                     Socket client = serverSocket.accept();
                     executor.execute(() -> handleUpload(client));
@@ -96,6 +97,48 @@ public class MainActivity extends Activity {
                 js("nativeStatus", "Receiver error: " + e.getMessage());
             }
         });
+    }
+
+    private volatile boolean discoveryRunning = false;
+
+    private void startDiscoveryResponder() {
+        if (discoveryRunning) return;
+        discoveryRunning = true;
+        executor.execute(() -> {
+            try (DatagramSocket ds = new DatagramSocket(8989)) {
+                ds.setBroadcast(true);
+                byte[] buf = new byte[256];
+                while (discoveryRunning && serverSocket != null && !serverSocket.isClosed()) {
+                    DatagramPacket packet = new DatagramPacket(buf, buf.length);
+                    ds.receive(packet);
+                    String msg = new String(packet.getData(), packet.getOffset(), packet.getLength(), StandardCharsets.UTF_8).trim();
+                    if ("YUBARAJ_SHARE_DISCOVER".equals(msg)) {
+                        byte[] reply = "YUBARAJ_SHARE_READY".getBytes(StandardCharsets.UTF_8);
+                        DatagramPacket response = new DatagramPacket(reply, reply.length, packet.getAddress(), packet.getPort());
+                        ds.send(response);
+                    }
+                }
+            } catch (Exception ignored) { }
+            finally { discoveryRunning = false; }
+        });
+    }
+
+    private String discoverReceiver() throws IOException {
+        try (DatagramSocket ds = new DatagramSocket()) {
+            ds.setBroadcast(true);
+            ds.setSoTimeout(1400);
+            byte[] data = "YUBARAJ_SHARE_DISCOVER".getBytes(StandardCharsets.UTF_8);
+            DatagramPacket request = new DatagramPacket(data, data.length, InetAddress.getByName("255.255.255.255"), 8989);
+            ds.send(request);
+            byte[] response = new byte[256];
+            DatagramPacket packet = new DatagramPacket(response, response.length);
+            ds.receive(packet);
+            String msg = new String(packet.getData(), packet.getOffset(), packet.getLength(), StandardCharsets.UTF_8).trim();
+            if ("YUBARAJ_SHARE_READY".equals(msg)) return packet.getAddress().getHostAddress();
+            throw new IOException("Receiver not found");
+        } catch (SocketTimeoutException e) {
+            throw new IOException("Receiver not found. On the other phone tap Start Receiver and connect both phones to the same Wi-Fi/hotspot.");
+        }
     }
 
     private void handleUpload(Socket socket) {
@@ -250,6 +293,22 @@ public class MainActivity extends Activity {
         });
     }
 
+    private void sendAutomatically() {
+        js("nativeStatus", "Searching for a Yubaraj Share receiver on this Wi-Fi/hotspot…");
+        executor.execute(() -> {
+            try {
+                pendingIp = discoverReceiver();
+                js("nativeStatus", "Receiver found automatically. Choose files to send…");
+                runOnUiThread(() -> {
+                    Intent i = new Intent(Intent.ACTION_OPEN_DOCUMENT);
+                    i.addCategory(Intent.CATEGORY_OPENABLE); i.setType("*/*");
+                    i.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true);
+                    startActivityForResult(i, PICK_SEND);
+                });
+            } catch (Exception e) { js("nativeStatus", e.getMessage()); }
+        });
+    }
+
     private class Bridge {
         @JavascriptInterface public void startReceiver(){ MainActivity.this.startReceiver(); }
         @JavascriptInterface public void onlineSend(String server){
@@ -266,10 +325,8 @@ public class MainActivity extends Activity {
             if(u.isEmpty() || c.length()!=6){ js("nativeStatus","Enter relay URL and the six-digit transfer code."); return; }
             downloadOnline(u,c);
         }
-        @JavascriptInterface public void sendTo(String ip){ pendingIp=ip==null?"":ip.trim(); runOnUiThread(()->{
-            if(pendingIp.isEmpty()){js("nativeStatus","Enter the receiver IP address first.");return;}
-            Intent i=new Intent(Intent.ACTION_OPEN_DOCUMENT);i.addCategory(Intent.CATEGORY_OPENABLE);i.setType("*/*");i.putExtra(Intent.EXTRA_ALLOW_MULTIPLE,true);startActivityForResult(i,PICK_SEND);
-        });}
+        @JavascriptInterface public void sendTo(String ip){ sendAutomatically(); }
+        @JavascriptInterface public void sendAuto(){ sendAutomatically(); }
         @JavascriptInterface public void pickFile(){ runOnUiThread(()->{
             Intent i=new Intent(Intent.ACTION_OPEN_DOCUMENT);i.addCategory(Intent.CATEGORY_OPENABLE);i.setType("*/*");i.putExtra(Intent.EXTRA_ALLOW_MULTIPLE,true);startActivityForResult(i,PICK_RECEIVE);
         });}
