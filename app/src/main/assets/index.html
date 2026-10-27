@@ -14,8 +14,9 @@ header{padding:24px 18px 30px;background:linear-gradient(140deg,#00b9ef,#0757e8 
 </div>
 <div class="section"><h2>Send to receiver</h2><p style="font-size:13px;color:#66738b">On the receiving phone, tap Start Receiver. This phone will find it automatically. Both phones must be connected to the same Wi-Fi/hotspot.</p><button class="secondary" onclick="send()">Find receiver &amp; select files</button></div>
 <div class="section"><h2>Online transfer by code</h2>
-<p style="font-size:13px;color:#66738b">Requires your online relay server deployed with HTTPS. Sender uploads one file temporarily and shares the six-digit code. Receiver downloads using that code.</p>
-<input id="serverUrl" placeholder="Relay HTTPS URL, e.g. https://your-server.example.com" inputmode="url">
+<p style="font-size:13px;color:#66738b">Works in the Android app and Chromebook/desktop browser after the relay server is deployed with HTTPS. Upload a file to get a six-digit code, then enter that code on the receiving device. Files are temporary.</p>
+<input id="serverUrl" placeholder="Relay HTTPS URL (required for online transfer)" inputmode="url">
+<input id="webFile" type="file" style="display:none">
 <button class="secondary" onclick="onlineSend()">Upload file &amp; get code</button>
 <input id="transferCode" placeholder="Six-digit transfer code" inputmode="numeric" maxlength="6">
 <button class="secondary" onclick="onlineReceive()">Receive by code</button>
@@ -23,7 +24,7 @@ header{padding:24px 18px 30px;background:linear-gradient(140deg,#00b9ef,#0757e8 
 </div>
 <div class="section"><h2>Supported files</h2><span class="pill">📸 Photos</span><span class="pill">🎬 Videos</span><span class="pill">🎵 Music</span><span class="pill">📄 Documents</span><span class="pill">📦 ZIP / APK</span></div>
 <div class="section"><h2>Latest activity</h2><p id="history" style="font-size:13px;color:#66738b;margin-bottom:0">No transfers yet.</p></div>
-<footer>Yubaraj Share • Version 1.1.0<br>Offline LAN transfer only in this build. Online/remote transfer is not yet implemented.</footer></main>
+<footer>Yubaraj Share • Version 1.2.0<br>Local-network discovery + online relay (server deployment required).</footer></main>
 <script>
 function status(t){document.getElementById('status').textContent=t}
 function nativeStatus(t){status(t)}
@@ -32,7 +33,7 @@ function send(){if(window.AndroidBridge)AndroidBridge.sendAuto();else status('In
 function receive(){if(window.AndroidBridge)AndroidBridge.startReceiver();else status('Open the Android APK to start receiving.')}
 function offline(){status('1) Connect both phones to the same Wi-Fi, or connect the sender to the receiver phone hotspot. 2) On receiver tap Start Receiver. 3) On sender tap Find receiver & select files; receiver is found automatically. Keep receiver app open.')}
 function online(){document.getElementById('serverUrl').focus();status('Online transfer needs the relay server URL. Deploy the online-server folder, use its HTTPS URL, then upload a file to get a code.')}
-function onlineSend(){let url=document.getElementById('serverUrl').value.trim();if(!url){status('Enter your deployed relay server HTTPS URL first.');return}if(window.AndroidBridge)AndroidBridge.onlineSend(url);else status('Install the Android APK to upload a file.')}
+async function onlineSend(){let url=document.getElementById('serverUrl').value.trim().replace(/\/$/,'');if(!url){status('Enter your deployed relay server HTTPS URL first.');return}if(!/^https:\/\//i.test(url)){status('For online transfer, the server URL must start with https://');return}if(window.AndroidBridge){AndroidBridge.onlineSend(url);return}const picker=document.getElementById('webFile');picker.value='';picker.onchange=async()=>{const f=picker.files&&picker.files[0];if(!f)return;try{status('Uploading '+f.name+'…');const fd=new FormData();fd.append('file',f,f.name);const r=await fetch(url+'/api/upload',{method:'POST',body:fd});const data=await r.json();if(!r.ok)throw new Error(data.error||'Upload failed');document.getElementById('transferCode').value=data.code;document.getElementById('onlineCode').textContent='Your transfer code: '+data.code;status('Uploaded '+data.name+'. Share code '+data.code+' with the receiver. Expires in '+(data.ttlMinutes||60)+' minutes.');document.getElementById('history').textContent='Online sent '+data.name}catch(e){status('Upload failed: '+e.message+'. Check server URL, HTTPS and CORS settings.')}};picker.click()}
 function onlineReceive(){let url=document.getElementById('serverUrl').value.trim(),code=document.getElementById('transferCode').value.trim();if(!url||!/^\\d{6}$/.test(code)){status('Enter the relay URL and a six-digit code.');return}if(window.AndroidBridge)AndroidBridge.onlineReceive(url,code);else status('Install the Android APK to download a file.')}
 function onlineCodeReady(code){document.getElementById('onlineCode').textContent='Your transfer code: '+code;document.getElementById('transferCode').value=code}
 </script></body></html>
