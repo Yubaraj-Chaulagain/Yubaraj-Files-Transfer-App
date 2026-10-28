@@ -156,6 +156,14 @@ public class MainActivity extends Activity {
                 if (headerBuf.size()>16384) throw new IOException("Headers too large");
             }
             String headers = headerBuf.toString("ISO-8859-1");
+            String requestLine = headers.split("\r\n", 2)[0];
+            if (requestLine.startsWith("GET / ") || requestLine.startsWith("GET /index.html ")) {
+                String page = "<!doctype html><html><head><meta name=viewport content='width=device-width,initial-scale=1'><meta charset=utf-8><title>Yubaraj Share</title><style>body{font:16px Arial;max-width:520px;margin:30px auto;padding:16px;background:#f2f6ff;color:#14213d}section{background:white;padding:20px;border-radius:18px}button,input{font-size:16px;padding:12px;margin:8px 0;width:100%;box-sizing:border-box}button{background:#0757e8;color:white;border:0;border-radius:10px}#s{overflow-wrap:anywhere}</style></head><body><section><h2>📥 Yubaraj Share</h2><p>Select files to send from this phone to the Android receiver.</p><input id=f type=file multiple><button onclick='go()'>Send files</button><p id=s>Choose one or more files.</p></section><script>async function go(){let fs=document.getElementById('f').files;if(!fs.length)return;for(let f of fs){let s=document.getElementById('s');s.textContent='Sending '+f.name+'…';try{let r=await fetch('/upload',{method:'POST',headers:{'Content-Type':'application/octet-stream','X-File-Name':encodeURIComponent(f.name)},body:f});if(!r.ok)throw Error('HTTP '+r.status);s.textContent='Sent successfully: '+f.name}catch(e){s.textContent='Failed: '+f.name+' — '+e.message;return}}document.getElementById('s').textContent='All files sent successfully.'}</script></body></html>";
+                byte[] body = page.getBytes(StandardCharsets.UTF_8);
+                OutputStream out = s.getOutputStream();
+                out.write(("HTTP/1.1 200 OK\r\nContent-Type: text/html; charset=utf-8\r\nContent-Length: "+body.length+"\r\nConnection: close\r\nCache-Control: no-store\r\n\r\n").getBytes(StandardCharsets.US_ASCII));
+                out.write(body); out.flush(); return;
+            }
             int contentLength = -1;
             String name = "received_file";
             for (String line : headers.split("\r\n")) {
