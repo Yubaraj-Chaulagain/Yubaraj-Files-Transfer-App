@@ -8,11 +8,11 @@ header{padding:24px 18px 30px;background:linear-gradient(140deg,#00b9ef,#0757e8 
 <main class="wrap"><div class="status" id="status">Ready. For offline transfer, connect both phones to the same Wi-Fi or one phone's hotspot.</div>
 <div class="grid">
 <div class="card"><div class="icon">📤</div><h3>Send Files</h3><p>Send selected files to a receiver on the same network.</p><button onclick="send()">Choose & Send</button></div>
-<div class="card"><div class="icon">📥</div><h3>Receive Files</h3><p>Start receiver and share this phone's IP address.</p><button onclick="receive()">Start Receiver</button></div>
+<div class="card"><div class="icon">📥</div><h3>Receive Files</h3><p>Start receiver; other phones can open the receiver page in a browser.</p><button onclick="receive()">Start Receiver</button></div>
 <div class="card"><div class="icon">📶</div><h3>Offline Transfer</h3><p>Local Wi-Fi or hotspot; internet not required.</p><button onclick="offline()">How to connect</button></div>
 <div class="card"><div class="icon">🌐</div><h3>Online Transfer</h3><p>Remote transfer service is not configured in this build.</p><button onclick="online()">Online status</button></div>
 </div>
-<div class="section"><h2>Send to receiver</h2><p style="font-size:13px;color:#66738b">On the receiving phone, tap Start Receiver. This phone will find it automatically. Both phones must be connected to the same Wi-Fi/hotspot.</p><button class="secondary" onclick="send()">Find receiver &amp; select files</button></div>
+<div class="section"><h2>Send to receiver</h2><p style="font-size:13px;color:#66738b">For Android-to-Android, use automatic discovery. For iPhone/Chromebook to Android, start the receiver and open http://RECEIVER-IP:8988 in the other device browser. Both devices must share the same Wi-Fi/hotspot.</p><button class="secondary" onclick="send()">Find receiver &amp; select files</button></div>
 <div class="section"><h2>Online transfer by code</h2>
 <p style="font-size:13px;color:#66738b">Works in the Android app and Chromebook/desktop browser after the relay server is deployed with HTTPS. Upload a file to get a six-digit code, then enter that code on the receiving device. Files are temporary.</p>
 <input id="serverUrl" placeholder="Relay HTTPS URL (required for online transfer)" inputmode="url">
@@ -24,14 +24,14 @@ header{padding:24px 18px 30px;background:linear-gradient(140deg,#00b9ef,#0757e8 
 </div>
 <div class="section"><h2>Supported files</h2><span class="pill">📸 Photos</span><span class="pill">🎬 Videos</span><span class="pill">🎵 Music</span><span class="pill">📄 Documents</span><span class="pill">📦 ZIP / APK</span></div>
 <div class="section"><h2>Latest activity</h2><p id="history" style="font-size:13px;color:#66738b;margin-bottom:0">No transfers yet.</p></div>
-<footer>Yubaraj Share • Version 1.2.0<br>Local-network discovery + online relay (server deployment required).</footer></main>
+<footer>Yubaraj Share • Version 1.2.0<br>Android local receiver + browser upload to Android; online relay requires deployment.</footer></main>
 <script>
 function status(t){document.getElementById('status').textContent=t}
 function nativeStatus(t){status(t)}
 function nativeHistory(t){document.getElementById('history').textContent=t}
 function send(){if(window.AndroidBridge)AndroidBridge.sendAuto();else status('Install and open the Android APK to send files.')}
 function receive(){if(window.AndroidBridge)AndroidBridge.startReceiver();else status('Open the Android APK to start receiving.')}
-function offline(){status('1) Connect both phones to the same Wi-Fi, or connect the sender to the receiver phone hotspot. 2) On receiver tap Start Receiver. 3) On sender tap Find receiver & select files; receiver is found automatically. Keep receiver app open.')}
+function offline(){status('1) Connect devices to the same Wi-Fi/hotspot. 2) On an Android receiver, tap Start Receiver. 3) Android senders can use Find receiver. iPhone/Chromebook senders can open http://RECEIVER-IP:8988 in their browser and choose files. Keep the Android receiver app open. iPhone receiving from Android is not yet supported by this build.')}
 function online(){document.getElementById('serverUrl').focus();status('Online transfer needs the relay server URL. Deploy the online-server folder, use its HTTPS URL, then upload a file to get a code.')}
 async function onlineSend(){let url=document.getElementById('serverUrl').value.trim().replace(/\/$/,'');if(!url){status('Enter your deployed relay server HTTPS URL first.');return}if(!/^https:\/\//i.test(url)){status('For online transfer, the server URL must start with https://');return}if(window.AndroidBridge){AndroidBridge.onlineSend(url);return}const picker=document.getElementById('webFile');picker.value='';picker.onchange=async()=>{const f=picker.files&&picker.files[0];if(!f)return;try{status('Uploading '+f.name+'…');const fd=new FormData();fd.append('file',f,f.name);const r=await fetch(url+'/api/upload',{method:'POST',body:fd});const data=await r.json();if(!r.ok)throw new Error(data.error||'Upload failed');document.getElementById('transferCode').value=data.code;document.getElementById('onlineCode').textContent='Your transfer code: '+data.code;status('Uploaded '+data.name+'. Share code '+data.code+' with the receiver. Expires in '+(data.ttlMinutes||60)+' minutes.');document.getElementById('history').textContent='Online sent '+data.name}catch(e){status('Upload failed: '+e.message+'. Check server URL, HTTPS and CORS settings.')}};picker.click()}
 function onlineReceive(){let url=document.getElementById('serverUrl').value.trim(),code=document.getElementById('transferCode').value.trim();if(!url||!/^\\d{6}$/.test(code)){status('Enter the relay URL and a six-digit code.');return}if(window.AndroidBridge)AndroidBridge.onlineReceive(url,code);else status('Install the Android APK to download a file.')}
